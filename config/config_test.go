@@ -21,7 +21,7 @@ func TestConfig(t *testing.T) {
 	RunSpecs(t, "Config Suite")
 }
 
-var _ = Describe("Config", Serial, func() {
+var _ = Describe("Config", func() {
 	// We'll hold a copy of the original environment variables
 	// and pflag.CommandLine so we can reset between tests.
 	var (
@@ -41,7 +41,7 @@ var _ = Describe("Config", Serial, func() {
 		log.SetOutput(logBuf)
 
 		// Save original execCommand.
-		originalExecCommand = exec.Command
+		originalExecCommand = exec.GetCommand()
 
 		// Create a new pflag set for each test, so flags don't bleed across.
 		flagSet = pflag.NewFlagSet("test", pflag.ContinueOnError)
@@ -69,7 +69,7 @@ var _ = Describe("Config", Serial, func() {
 		log.SetOutput(os.Stderr)
 
 		// Restore execCommand.
-		exec.Command = originalExecCommand
+		exec.SetCommand(originalExecCommand)
 
 		// Restore pflag.CommandLine.
 		pflag.CommandLine = oldFlags
@@ -78,9 +78,9 @@ var _ = Describe("Config", Serial, func() {
 	Context("with no overrides at all", func() {
 		It("uses the built-in defaults", func() {
 			// We simulate that Git config is empty / fails.
-			exec.Command = func(name string, arg ...string) exec.Cmd {
+			exec.SetCommand(func(name string, arg ...string) exec.Cmd {
 				return exec.NewMockCmd([]byte(""), fmt.Errorf("not found"))
-			}
+			})
 
 			// We do not parse flags or set environment variables.
 			_ = flagSet.Parse([]string{})
@@ -96,9 +96,9 @@ var _ = Describe("Config", Serial, func() {
 	Context("when Git config provides values", func() {
 		It("overrides defaults from Git for non-secret fields", func() {
 			// Git returns a custom provider, e.g. "anthropic".
-			exec.Command = func(name string, arg ...string) exec.Cmd {
+			exec.SetCommand(func(name string, arg ...string) exec.Cmd {
 				return exec.NewMockCmd([]byte("anthropic\n"), nil)
-			}
+			})
 
 			// We parse flags (but none given).
 			_ = flagSet.Parse([]string{})
@@ -117,9 +117,9 @@ var _ = Describe("Config", Serial, func() {
 		})
 
 		It("logs errors if Git config fails but does not fail load", func() {
-			exec.Command = func(name string, arg ...string) exec.Cmd {
+			exec.SetCommand(func(name string, arg ...string) exec.Cmd {
 				return exec.NewMockCmd([]byte(""), fmt.Errorf("git error"))
-			}
+			})
 
 			_ = flagSet.Parse([]string{})
 
@@ -138,9 +138,9 @@ var _ = Describe("Config", Serial, func() {
 	Context("when environment variables are set", func() {
 		It("overrides defaults and Git config", func() {
 			// Suppose Git says "anthropic".
-			exec.Command = func(name string, arg ...string) exec.Cmd {
+			exec.SetCommand(func(name string, arg ...string) exec.Cmd {
 				return exec.NewMockCmd([]byte("anthropic\n"), nil)
-			}
+			})
 
 			// Also define environment variables for Provider, Model, and the secret:
 			os.Setenv("GIT_AUTO_COMMIT_PROVIDER", "env-provider")
@@ -162,9 +162,9 @@ var _ = Describe("Config", Serial, func() {
 	Context("when flags are provided", func() {
 		It("overrides everything else if non-empty", func() {
 			// Git says "anthropic".
-			exec.Command = func(name string, arg ...string) exec.Cmd {
+			exec.SetCommand(func(name string, arg ...string) exec.Cmd {
 				return exec.NewMockCmd([]byte("anthropic\n"), nil)
-			}
+			})
 
 			// Env says "env-provider".
 			os.Setenv("GIT_AUTO_COMMIT_PROVIDER", "env-provider")
@@ -190,9 +190,9 @@ var _ = Describe("Config", Serial, func() {
 
 		It("does not override if the flag is empty", func() {
 			// Suppose Git says "anthropic", environment says "env-provider"
-			exec.Command = func(name string, arg ...string) exec.Cmd {
+			exec.SetCommand(func(name string, arg ...string) exec.Cmd {
 				return exec.NewMockCmd([]byte("anthropic\n"), nil)
-			}
+			})
 			os.Setenv("GIT_AUTO_COMMIT_PROVIDER", "env-provider")
 
 			// Passing an empty flag to provider

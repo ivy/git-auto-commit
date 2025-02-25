@@ -14,17 +14,17 @@ func TestExec(t *testing.T) {
 }
 
 var _ = Describe("Exec variable", func() {
-	It("can be overridden to return a mock command", Serial, func() {
-		originalExec := exec.Command
+	It("can be overridden to return a mock command", func() {
+		originalExec := exec.GetCommand()
 		defer func() {
 			// Restore the original constructor after the test
-			exec.Command = originalExec
+			exec.SetCommand(originalExec)
 		}()
 
 		// Override Exec with a function that always returns a mock
-		exec.Command = func(name string, args ...string) exec.Cmd {
+		exec.SetCommand(func(name string, args ...string) exec.Cmd {
 			return exec.NewMockCmd([]byte("fake output"), nil)
-		}
+		})
 
 		cmd := exec.Command("whatever", "args")
 		output, err := cmd.Output()
