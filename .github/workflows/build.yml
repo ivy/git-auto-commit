@@ -28,8 +28,8 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-go-
 
-      - name: Run setup
+      - name: Run Setup
         run: bin/setup
 
-      - name: Run tests
+      - name: Run Tests
         run: bin/test ci
