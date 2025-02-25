@@ -14,7 +14,7 @@ func TestExec(t *testing.T) {
 }
 
 var _ = Describe("Exec variable", func() {
-	It("can be overridden to return a mock command", func() {
+	It("can be overridden to return a mock command", Serial, func() {
 		originalExec := exec.Command
 		defer func() {
 			// Restore the original constructor after the test
