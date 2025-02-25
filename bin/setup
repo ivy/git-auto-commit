@@ -5,7 +5,15 @@ set -o nounset
 set -o pipefail
 [[ -n "${DEBUG:-}" ]] && set -o xtrace
 
+if ! command -v go &> /dev/null; then
+  echo "Go is not installed. Please install Go and try again."
+  exit 1
+fi
+
+echo "Installing Go dependencies..."
+go mod download
+
 if ! command -v ginkgo &> /dev/null; then
-  echo "Installing ginkgo..."
-  go install github.com/onsi/ginkgo/ginkgo@latest
+  echo "Installing Ginkgo CLI..."
+  go install github.com/onsi/ginkgo/v2/ginkgo
 fi

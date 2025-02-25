@@ -40,9 +40,10 @@ case "${1:-}" in
     ;;
   ci)
     shift
-    GINKGO_FLAGS+=(
+    GINKGO_FLAGS=(
       # Print easier to manage output in GitHub Actions.
       --github-output
+      "${GINKGO_FLAGS[@]}"
     )
     exec "$GINKGO" "$@" "${GINKGO_FLAGS[@]}"
     ;;
