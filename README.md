@@ -32,9 +32,15 @@ curl -fsSL https://get.git-auto-commit.org | sh
 - **`-M MODEL, --model MODEL`** – Overrides the default model used for message generation.  
 - **`-p PROVIDER, --provider PROVIDER`** – Overrides the default LLM provider.  
 
-### 🔀 git auto-pull-request (`git auto-pr`)  
+Additional arguments can be passed to `git commit`:
 
-`git auto-pull-request` (or `git auto-pr`) automates PR descriptions using AI, reducing manual effort and ensuring well-structured messages. Requires the [GitHub CLI (`gh`)](https://cli.github.com/).  
+```sh
+git auto-commit -m "My message" -- --amend
+```
+
+### 🔀 git auto-pr
+
+`git auto-pr` automates PR descriptions using AI, reducing manual effort and ensuring well-structured messages. Requires the [GitHub CLI (`gh`)](https://cli.github.com/).  
 
 #### Usage
 All options from `git auto-commit` apply, with the ability to pass additional arguments to `gh`.  

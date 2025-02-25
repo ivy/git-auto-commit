@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+[ -n "${DEBUG:-}" ] && set -o xtrace
+
+GINKGO="${GINKGO:-ginkgo}"
+
+GINKGO_FLAGS=(
+  # Run test suites under the current directory recursively
+  -r
+  # Randomize all specs together.
+  --randomize-all
+  # Randomize the order in which test suites run.
+  --randomize-suites
+  # Run in parallel with an auto-detected number of nodes.
+  -p
+  # Mark the test suite as failed if any specs are pending.
+  --fail-on-pending
+  # Enable data race detection.
+  --race
+  # Run `go vet` with a curated list of checks believed to be always
+  # worth addressing.
+  --vet=""
+  # Enable coverage analysis.
+  --cover
+  # Run test suites in all subdirectories.
+  ./...
+)
+
+function usage() {
+  echo "Usage: $0 [watch]"
+}
+
+case "${1:-}" in
+  help|--help|-h)
+    usage
+    exit 0
+    ;;
+  ci)
+    shift
+    GINKGO_FLAGS+=(
+      # Print easier to manage output in GitHub Actions.
+      --github-output
+    )
+    exec "$GINKGO" "$@" "${GINKGO_FLAGS[@]}"
+    ;;
+  watch)
+    # Ginkgo does not support --randomize-suites in watch mode.
+    exec "$GINKGO" watch "$@" "${GINKGO_FLAGS[@]/--randomize-suites/}"
+    ;;
+  *)
+    exec "$GINKGO" "$@" "${GINKGO_FLAGS[@]}"
+    ;;
+esac
