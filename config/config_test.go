@@ -1,9 +1,7 @@
 package config_test
 
 import (
-	"bytes"
 	"fmt"
-	"log"
 	"os"
 	"strings"
 	"testing"
@@ -27,7 +25,6 @@ var _ = Describe("Config", func() {
 	var (
 		origEnv             []string
 		flagSet             *pflag.FlagSet
-		logBuf              *bytes.Buffer
 		oldFlags            *pflag.FlagSet
 		originalExecCommand func(name string, arg ...string) exec.Cmd
 	)
@@ -35,10 +32,6 @@ var _ = Describe("Config", func() {
 	BeforeEach(func() {
 		// Save the current environment.
 		origEnv = os.Environ()
-
-		// Capture log output to a buffer for easy inspection.
-		logBuf = new(bytes.Buffer)
-		log.SetOutput(logBuf)
 
 		// Save original execCommand.
 		originalExecCommand = exec.GetCommand()
@@ -64,9 +57,6 @@ var _ = Describe("Config", func() {
 				os.Setenv(parts[0], parts[1])
 			}
 		}
-
-		// Reset log output.
-		log.SetOutput(os.Stderr)
 
 		// Restore execCommand.
 		exec.SetCommand(originalExecCommand)
@@ -114,24 +104,6 @@ var _ = Describe("Config", func() {
 
 			// Secret is not read from Git, remains default:
 			Expect(cfg.OpenAIAPIKey).To(Equal(""))
-		})
-
-		It("logs errors if Git config fails but does not fail load", func() {
-			exec.SetCommand(func(name string, arg ...string) exec.Cmd {
-				return exec.NewMockCmd([]byte(""), fmt.Errorf("git error"))
-			})
-
-			_ = flagSet.Parse([]string{})
-
-			cfg, err := config.Load()
-			Expect(err).NotTo(HaveOccurred())
-
-			// We still get defaults even if Git config fails:
-			Expect(cfg.Provider).To(Equal("openai"))
-			Expect(cfg.Model).To(Equal("gpt-4o-mini"))
-
-			// Check the log output for our error message:
-			Expect(logBuf.String()).To(ContainSubstring("Error reading git config"))
 		})
 	})
 

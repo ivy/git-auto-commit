@@ -2,13 +2,12 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"os"
 
 	"github.com/spf13/pflag"
 
-	// Assume this package registers flags for --provider, --model, --openai-key, etc.
 	"github.com/ivy/git-auto-commit/config"
+	"github.com/ivy/git-auto-commit/log"
 )
 
 // Program metadata
@@ -95,7 +94,7 @@ Options:
 	// 7. Load our layered configuration (from defaults, git config, environment, pflags).
 	cfg, err := config.Load()
 	if err != nil {
-		log.Fatalf("Failed to load configuration: %v", err)
+		log.Fatalw("failed to load configuration", "error", err)
 	}
 
 	// 8. For demonstration, print out the loaded config fields
