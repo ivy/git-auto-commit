@@ -5,11 +5,12 @@ package config
 import (
 	"fmt"
 	"log"
-	"os/exec"
 	"strings"
 
 	"github.com/Netflix/go-env"
 	"github.com/spf13/pflag"
+
+	"github.com/ivy/git-auto-commit/util/exec"
 )
 
 // Config holds user-configurable options. The fields can be set by defaults,
