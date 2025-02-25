@@ -2,9 +2,13 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	"github.com/spf13/pflag"
+
+	// Assume this package registers flags for --provider, --model, --openai-key, etc.
+	"github.com/ivy/git-auto-commit/config"
 )
 
 // Program metadata
@@ -13,27 +17,28 @@ const (
 	RepoURL     = "https://github.com/ivy/git-auto-commit"
 )
 
-// Version is set via build flags (e.g., `-ldflags="-X main.Version=1.0.0"`).
+// Version is set via build flags (e.g. `-ldflags="-X main.Version=1.0.0"`).
 // Defaults to "dev" if not set.
 var Version = "dev"
 
-// Config holds all user-configurable options.
-type Config struct {
-	Verbose  bool
-	Yes      bool
-	Message  string
-	Model    string
-	Provider string
-	PRArgs   []string // Extra args to be passed to `gh` (GitHub CLI).
+// CLIFlags holds local CLI-only flags that are *not* in config.Config.
+type CLIFlags struct {
+	Verbose bool
+	Yes     bool
+	Message string
 }
 
 func main() {
+	// 1. Initialize the config package so it can register pflags
+	config.Init()
+
+	// 2. Local flags for this CLI
 	var (
-		cfg     Config
+		cli     CLIFlags
 		showVer bool
 	)
 
-	// Override the usage function to include custom help text.
+	// 3. Customize pflag usage to display program help
 	pflag.Usage = func() {
 		fmt.Fprintf(
 			os.Stderr,
@@ -48,70 +53,62 @@ Usage:
   %s [options] [-- <extra GitHub CLI args>]
 
 Examples:
-  # Add a custom message and open the PR immediately after creation.
-  %s -m "My message" -- --open
+  # Add a custom message and open the PR after creation:
+  %s -m "My custom message" -- --open
 
 Options:
 `,
-			ProgramName, Version, RepoURL, ProgramName, ProgramName,
+			ProgramName, Version, RepoURL, os.Args[0], os.Args[0],
 		)
 		pflag.PrintDefaults()
 	}
 
+	// 4. Register local flags that aren't part of config.Config
 	pflag.BoolVarP(
-		&showVer,
-		"version", "V",
-		false,
+		&showVer, "version", "V", false,
 		"Print the version of this tool and exit.",
 	)
-
 	pflag.BoolVarP(
-		&cfg.Verbose,
-		"verbose", "v",
-		true,
-		"Opens your $EDITOR (or falls back to nano/vi) with a suggested PR message.",
+		&cli.Verbose, "verbose", "v", false,
+		"Opens your $EDITOR with a suggested PR description.",
 	)
-
 	pflag.BoolVarP(
-		&cfg.Yes,
-		"yes", "y",
-		false,
+		&cli.Yes, "yes", "y", false,
 		"Creates your PR with the suggested message without prompting.",
 	)
-
 	pflag.StringVarP(
-		&cfg.Message,
-		"message", "m",
-		"",
-		"Adds extra context to the LLM (useful for explaining why the change was made).",
+		&cli.Message, "message", "m", "",
+		"Adds extra context for the LLM (why the change was made).",
 	)
 
-	pflag.StringVarP(
-		&cfg.Model,
-		"model", "M",
-		"",
-		"Overrides the default model used for PR message generation.",
-	)
-
-	pflag.StringVarP(
-		&cfg.Provider,
-		"provider", "p",
-		"",
-		"Overrides the default LLM provider.",
-	)
-
+	// 5. Parse the flags *once*.
 	pflag.Parse()
+
+	// 6. Any leftover arguments become PR arguments for `gh`.
+	prArgs := pflag.Args()
 
 	if showVer {
 		fmt.Printf("%s %s\n", ProgramName, Version)
 		os.Exit(0)
 	}
 
-	// Capture any leftover arguments as PR arguments to be passed to `gh`.
-	cfg.PRArgs = pflag.Args()
+	// 7. Load our layered configuration (from defaults, git config, environment, pflags).
+	cfg, err := config.Load()
+	if err != nil {
+		log.Fatalf("Failed to load configuration: %v", err)
+	}
 
-	// Since we are not implementing the actual PR creation logic here,
-	// just print a message and exit for demonstration.
+	// 8. For demonstration, print out the loaded config fields
+	fmt.Fprintf(os.Stderr,
+		"Using config:\n  Provider=%s\n  Model=%s\n  OpenAIKey=%q\n\n",
+		cfg.Provider, cfg.Model, cfg.OpenAIAPIKey,
+	)
+	fmt.Fprintf(os.Stderr,
+		"Local flags:\n  Verbose=%v\n  Yes=%v\n  Message=%q\n  PRArgs=%v\n",
+		cli.Verbose, cli.Yes, cli.Message, prArgs,
+	)
+
+	// Actual PR creation logic would go here...
 	fmt.Fprintln(os.Stderr, "Error: 'git auto-pr' is not implemented yet.")
 	os.Exit(1)
 }
