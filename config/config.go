@@ -29,6 +29,9 @@ type Config struct {
 	// only be set via environment variables or pflags, and not from Git config,
 	// to avoid checking secrets into Git.
 	OpenAIAPIKey string `env:"OPENAI_API_KEY"`
+
+	// LogLevel configures the log verbosity.
+	LogLevel string `env:"GIT_AUTO_COMMIT_LOG_LEVEL"`
 }
 
 // providerFlag, modelFlag, and openAIKeyFlag retain the values passed via the
@@ -43,6 +46,9 @@ var (
 
 	// openAIKeyFlag holds the value of --openai-key.
 	openAIKeyFlag *string
+
+	// logLevel holds the value of --log-level.
+	logLevel *string
 )
 
 // Init registers pflag variables for the Config fields. This function should be
@@ -68,6 +74,9 @@ func Init() {
 
 	openAIKeyFlag = pflag.String("openai-key", "",
 		"OpenAI API key (overrides env)")
+
+	logLevel = pflag.String("log-level", "",
+		"Log level (overrides env)")
 }
 
 // Load merges configuration from four sources, in ascending priority order:
@@ -84,11 +93,13 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		Provider: "openai",
 		Model:    "gpt-4o-mini",
+		LogLevel: "info",
 	}
 
 	// 2) Git config (non-secret values only).
 	getGitConfigValue("auto-commit.provider", &cfg.Provider)
 	getGitConfigValue("auto-commit.model", &cfg.Model)
+	getGitConfigValue("auto-commit.log-level", &cfg.LogLevel)
 	// We intentionally do not read OpenAIAPIKey from Git config.
 
 	// 3) Environment variables.
@@ -105,6 +116,9 @@ func Load() (*Config, error) {
 	}
 	if *openAIKeyFlag != "" {
 		cfg.OpenAIAPIKey = *openAIKeyFlag
+	}
+	if *logLevel != "" {
+		cfg.LogLevel = *logLevel
 	}
 
 	return cfg, nil

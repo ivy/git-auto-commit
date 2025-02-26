@@ -80,6 +80,7 @@ var _ = Describe("Config", func() {
 			Expect(cfg.Provider).To(Equal("openai"))
 			Expect(cfg.Model).To(Equal("gpt-4o-mini"))
 			Expect(cfg.OpenAIAPIKey).To(Equal(""))
+			Expect(cfg.LogLevel).To(Equal("info"))
 		})
 	})
 
@@ -101,6 +102,7 @@ var _ = Describe("Config", func() {
 			// confirm both fields changed from default:
 			Expect(cfg.Provider).To(Equal("anthropic"))
 			Expect(cfg.Model).To(Equal("anthropic"))
+			Expect(cfg.LogLevel).To(Equal("anthropic"))
 
 			// Secret is not read from Git, remains default:
 			Expect(cfg.OpenAIAPIKey).To(Equal(""))
@@ -117,6 +119,7 @@ var _ = Describe("Config", func() {
 			// Also define environment variables for Provider, Model, and the secret:
 			os.Setenv("GIT_AUTO_COMMIT_PROVIDER", "env-provider")
 			os.Setenv("GIT_AUTO_COMMIT_MODEL", "env-model")
+			os.Setenv("GIT_AUTO_COMMIT_LOG_LEVEL", "env-log-level")
 			os.Setenv("OPENAI_API_KEY", "env-secret")
 
 			_ = flagSet.Parse([]string{})
@@ -127,6 +130,7 @@ var _ = Describe("Config", func() {
 			// Env beats Git:
 			Expect(cfg.Provider).To(Equal("env-provider"))
 			Expect(cfg.Model).To(Equal("env-model"))
+			Expect(cfg.LogLevel).To(Equal("env-log-level"))
 			Expect(cfg.OpenAIAPIKey).To(Equal("env-secret"))
 		})
 	})
@@ -141,12 +145,14 @@ var _ = Describe("Config", func() {
 			// Env says "env-provider".
 			os.Setenv("GIT_AUTO_COMMIT_PROVIDER", "env-provider")
 			os.Setenv("GIT_AUTO_COMMIT_MODEL", "env-model")
+			os.Setenv("GIT_AUTO_COMMIT_LOG_LEVEL", "env-log-level")
 			os.Setenv("OPENAI_API_KEY", "env-secret")
 
 			// Now we pass flags that override them all:
 			err := flagSet.Parse([]string{
 				"--provider=flag-provider",
 				"--model=flag-model",
+				"--log-level=flag-log-level",
 				"--openai-key=flag-secret",
 			})
 			Expect(err).NotTo(HaveOccurred())
@@ -157,6 +163,7 @@ var _ = Describe("Config", func() {
 			// pflags override environment and git.
 			Expect(cfg.Provider).To(Equal("flag-provider"))
 			Expect(cfg.Model).To(Equal("flag-model"))
+			Expect(cfg.LogLevel).To(Equal("flag-log-level"))
 			Expect(cfg.OpenAIAPIKey).To(Equal("flag-secret"))
 		})
 
