@@ -79,6 +79,7 @@ func generatePRDescription(ctx context.Context, cfg *Config) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	log.Debugw("pull request format", "format", format)
 
 	prompt, err := template.RenderString(
 		"prompt/pr_description.tmpl",
@@ -91,6 +92,7 @@ func generatePRDescription(ctx context.Context, cfg *Config) (string, error) {
 		log.Errorw("failed to render pull request title template", "error", err)
 		return "", err
 	}
+	log.Debugw("pull request prompt", "prompt", prompt)
 
 	client := openai.NewClient(
 		option.WithAPIKey(cfg.OpenAIAPIKey),
@@ -144,12 +146,14 @@ func AutoPullRequest(ctx context.Context, cfg *Config) error {
 	if err != nil {
 		return fmt.Errorf("failed to generate PR description: %w", err)
 	}
+	log.Debugw("generated PR description", "description", prDescription)
 
 	// 2. Generate a proposed PR title.
 	prTitle, err := generatePRTitle(ctx, cfg, prDescription)
 	if err != nil {
 		return fmt.Errorf("failed to generate PR title: %w", err)
 	}
+	log.Debugw("generated PR title", "title", prTitle)
 
 	// Write the PR message to a temp file
 	tempDir, err := os.MkdirTemp("", "git-auto-pr-*")
@@ -158,19 +162,18 @@ func AutoPullRequest(ctx context.Context, cfg *Config) error {
 	}
 	defer os.RemoveAll(tempDir)
 
-	f, err := os.Create(filepath.Join(tempDir, "PULLREQ_EDITMSG"))
+	bodyFile := filepath.Join(tempDir, "PULLREQ_EDITMSG")
+	err = os.WriteFile(bodyFile, []byte(prDescription), 0644)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
-	defer os.Remove(f.Name())
 
 	// 4. Invoke "gh pr create" with the final title and body.
 	//    Optionally pass in base/head branches via cfg.ExtraArgs or explicitly.
 	args := []string{
 		"pr", "create",
 		"--title", prTitle,
-		"--body-file", f.Name(),
+		"--body-file", bodyFile,
 		"--web",
 	}
 	args = append(args, cfg.ExtraArgs...)
