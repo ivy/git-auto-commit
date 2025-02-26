@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/spf13/pflag"
 
+	git_auto_commit "github.com/ivy/git-auto-commit"
 	"github.com/ivy/git-auto-commit/config"
 	"github.com/ivy/git-auto-commit/log"
 )
@@ -98,19 +100,37 @@ Options:
 		log.Fatalw("failed to load configuration", "error", err)
 	}
 
-	// 7. For demonstration, print out the loaded config fields (Provider, Model, etc.)
-	//    and your local flags. In a real application, you'd pass them to your logic.
-	fmt.Fprintf(os.Stderr,
-		"Using config:\n  Provider=%s\n  Model=%s\n  OpenAIKey=%q\n\n",
-		cfg.Provider, cfg.Model, cfg.OpenAIAPIKey,
-	)
-	fmt.Fprintf(os.Stderr,
-		"Local flags:\n  Verbose=%v\n  Yes=%v\n  Message=%q\n  CommitArgs=%v\n",
-		cli.Verbose, cli.Yes, cli.Message, commitArgs,
-	)
+	// Set the logging threshold
+	// TODO(ivy): move to config.Load
+	logLevel := log.InfoLevel
+	switch cfg.LogLevel {
+	case "debug":
+		logLevel = log.DebugLevel
+	case "info":
+		logLevel = log.InfoLevel
+	case "warn":
+		logLevel = log.InfoLevel
+	case "error":
+		logLevel = log.InfoLevel
+	case "fatal":
+		logLevel = log.InfoLevel
+	default:
+		log.Errorw("invalid log level", "level", cfg.LogLevel)
+	}
+	log.SetLevel(logLevel)
 
-	// Actual logic would go here...
-	// For now, exit unimplemented:
-	fmt.Fprintln(os.Stderr, "Error: 'git auto-commit' is not implemented yet.")
-	os.Exit(1)
+	// Create git_auto_commit.Config from our loaded config and CLI flags
+	commitConfig := &git_auto_commit.Config{
+		Config:    cfg,
+		Verbose:   cli.Verbose,
+		Yes:       cli.Yes,
+		Message:   cli.Message,
+		ExtraArgs: commitArgs,
+	}
+	log.Infow("commitConfig", "commitConfig", commitConfig)
+
+	// Run the auto-commit logic
+	if err := git_auto_commit.AutoCommit(context.Background(), commitConfig); err != nil {
+		log.Fatalw("failed to auto-commit", "error", err)
+	}
 }
