@@ -17,8 +17,8 @@ import (
 	"github.com/openai/openai-go/option"
 
 	"github.com/ivy/git-auto-commit/config"
-	"github.com/ivy/git-auto-commit/log"
 	"github.com/ivy/git-auto-commit/util/exec"
+	"github.com/ivy/git-auto-commit/util/log"
 )
 
 const (
