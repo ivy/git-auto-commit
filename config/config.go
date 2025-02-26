@@ -66,10 +66,10 @@ var (
 //	    // Use cfg...
 //	}
 func Init() {
-	providerFlag = pflag.String("provider", "",
+	providerFlag = pflag.StringP("provider", "p", "",
 		"Auto-commit provider (overrides env or Git config)")
 
-	modelFlag = pflag.String("model", "",
+	modelFlag = pflag.StringP("model", "M", "",
 		"Auto-commit model (overrides env or Git config)")
 
 	openAIKeyFlag = pflag.String("openai-key", "",

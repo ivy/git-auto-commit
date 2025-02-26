@@ -9,7 +9,7 @@ import (
 
 	git_auto_commit "github.com/ivy/git-auto-commit"
 	"github.com/ivy/git-auto-commit/config"
-	"github.com/ivy/git-auto-commit/log"
+	"github.com/ivy/git-auto-commit/util/log"
 )
 
 // Program metadata

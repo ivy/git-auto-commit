@@ -7,7 +7,7 @@ import (
 	"github.com/spf13/pflag"
 
 	"github.com/ivy/git-auto-commit/config"
-	"github.com/ivy/git-auto-commit/log"
+	"github.com/ivy/git-auto-commit/util/log"
 )
 
 // Program metadata
