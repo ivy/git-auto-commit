@@ -14,7 +14,7 @@ import (
 )
 
 //go:embed **/*.tmpl
-var FS embed.FS
+var fs embed.FS
 
 // Engine is a wrapper around the text/template.Template type. It provides
 // methods for rendering templates with data.
@@ -36,7 +36,7 @@ func New() *Engine {
 // template in the engine's templates map for future use. If parsing fails, it
 // returns an error.
 func (e *Engine) lookup(name string) (*template.Template, error) {
-	tmpl, err := template.ParseFS(FS, name)
+	tmpl, err := template.ParseFS(fs, name)
 	if err != nil {
 		e.templates[name] = nil
 		return nil, fmt.Errorf("failed to parse template %q: %w", name, err)
