@@ -3,6 +3,8 @@ package exec
 import (
 	"io"
 	"os/exec"
+
+	"github.com/ivy/git-auto-commit/util/log"
 )
 
 // RealCmd wraps an *exec.Cmd and implements the Cmd interface.
@@ -21,6 +23,7 @@ func NewRealCmd(name string, arg ...string) Cmd {
 
 // Output wraps (*exec.Cmd).Output()
 func (r *RealCmd) Output() ([]byte, error) {
+	log.Debugw("running command", "command", r.cmd.Path, "args", r.cmd.Args)
 	return r.cmd.Output()
 }
 
@@ -37,5 +40,6 @@ func (r *RealCmd) SetStderr(stderr io.Writer) {
 }
 
 func (r *RealCmd) Run() error {
+	log.Debugw("running command", "command", r.cmd.Path, "args", r.cmd.Args)
 	return r.cmd.Run()
 }

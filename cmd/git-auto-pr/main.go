@@ -1,11 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"os"
 
 	"github.com/spf13/pflag"
 
+	git_auto_commit "github.com/ivy/git-auto-commit"
 	"github.com/ivy/git-auto-commit/config"
 	"github.com/ivy/git-auto-commit/util/log"
 )
@@ -29,31 +31,32 @@ type CLIFlags struct {
 
 func main() {
 	// 1. Initialize the config package so it can register pflags
+	//    for --provider, --model, and --openai-key.
 	config.Init()
 
-	// 2. Local flags for this CLI
+	// 2. Local flags for this CLI.
 	var (
 		cli     CLIFlags
 		showVer bool
 	)
 
-	// 3. Customize pflag usage to display program help
+	// Customize pflag usage to display program help.
 	pflag.Usage = func() {
 		fmt.Fprintf(
 			os.Stderr,
 			`%s %s
-An AI-powered Git tool that generates pull request descriptions using LLMs.
+An AI-powered Git tool that generates commit and PR messages using LLMs.
 
 Repository:  %s
 Author:      Ivy Evans <ivy@ivyevans.net>
 License:     ISC License
 
 Usage:
-  %s [options] [-- <extra GitHub CLI args>]
+  %s [options] [-- <extra git commit args>]
 
 Examples:
-  # Add a custom message and open the PR after creation:
-  %s -m "My custom message" -- --open
+  # Use GPT-o1, then pass --label bugfix to gh:
+  %s --model=gpt-o1 -- --label bugfix
 
 Options:
 `,
@@ -62,52 +65,72 @@ Options:
 		pflag.PrintDefaults()
 	}
 
-	// 4. Register local flags that aren't part of config.Config
+	// 3. Register local flags that aren't part of config.Config
 	pflag.BoolVarP(
 		&showVer, "version", "V", false,
 		"Print the version of this tool and exit.",
 	)
 	pflag.BoolVarP(
 		&cli.Verbose, "verbose", "v", false,
-		"Opens your $EDITOR with a suggested PR description.",
+		"Opens your $EDITOR with a suggested commit message.",
 	)
 	pflag.BoolVarP(
 		&cli.Yes, "yes", "y", false,
-		"Creates your PR with the suggested message without prompting.",
+		"Commits changes with the suggested message without prompting.",
 	)
 	pflag.StringVarP(
 		&cli.Message, "message", "m", "",
 		"Adds extra context for the LLM (why the change was made).",
 	)
 
-	// 5. Parse the flags *once*.
+	// 4. Parse the pflags *once*.
 	pflag.Parse()
 
-	// 6. Any leftover arguments become PR arguments for `gh`.
-	prArgs := pflag.Args()
+	// 5. Any leftover arguments after pflag.Parse() become commit args.
+	commitArgs := pflag.Args()
 
 	if showVer {
 		fmt.Printf("%s %s\n", ProgramName, Version)
 		os.Exit(0)
 	}
 
-	// 7. Load our layered configuration (from defaults, git config, environment, pflags).
+	// 6. Load our layered config from default, git config, environment, and pflags.
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalw("failed to load configuration", "error", err)
 	}
 
-	// 8. For demonstration, print out the loaded config fields
-	fmt.Fprintf(os.Stderr,
-		"Using config:\n  Provider=%s\n  Model=%s\n  OpenAIKey=%q\n\n",
-		cfg.Provider, cfg.Model, cfg.OpenAIAPIKey,
-	)
-	fmt.Fprintf(os.Stderr,
-		"Local flags:\n  Verbose=%v\n  Yes=%v\n  Message=%q\n  PRArgs=%v\n",
-		cli.Verbose, cli.Yes, cli.Message, prArgs,
-	)
+	// Set the logging threshold
+	// TODO(ivy): move to config.Load
+	logLevel := log.InfoLevel
+	switch cfg.LogLevel {
+	case "debug":
+		logLevel = log.DebugLevel
+	case "info":
+		logLevel = log.InfoLevel
+	case "warn":
+		logLevel = log.WarnLevel
+	case "error":
+		logLevel = log.ErrorLevel
+	case "fatal":
+		logLevel = log.FatalLevel
+	default:
+		log.Errorw("invalid log level", "level", cfg.LogLevel)
+	}
+	log.SetLevel(logLevel)
 
-	// Actual PR creation logic would go here...
-	fmt.Fprintln(os.Stderr, "Error: 'git auto-pr' is not implemented yet.")
-	os.Exit(1)
+	// Create git_auto_commit.Config from our loaded config and CLI flags
+	prConfig := &git_auto_commit.Config{
+		Config:    cfg,
+		Verbose:   cli.Verbose,
+		Yes:       cli.Yes,
+		Message:   cli.Message,
+		ExtraArgs: commitArgs,
+	}
+	log.Infow("commitConfig", "commitConfig", prConfig)
+
+	// Run the auto-commit logic
+	if err := git_auto_commit.AutoPullRequest(context.Background(), prConfig); err != nil {
+		log.Fatalw("failed to auto-commit", "error", err)
+	}
 }
