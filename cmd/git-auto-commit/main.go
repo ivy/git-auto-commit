@@ -109,11 +109,11 @@ Options:
 	case "info":
 		logLevel = log.InfoLevel
 	case "warn":
-		logLevel = log.InfoLevel
+		logLevel = log.WarnLevel
 	case "error":
-		logLevel = log.InfoLevel
+		logLevel = log.ErrorLevel
 	case "fatal":
-		logLevel = log.InfoLevel
+		logLevel = log.FatalLevel
 	default:
 		log.Errorw("invalid log level", "level", cfg.LogLevel)
 	}
