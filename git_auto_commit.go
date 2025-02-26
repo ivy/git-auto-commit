@@ -17,6 +17,7 @@ import (
 	"github.com/openai/openai-go/option"
 
 	"github.com/ivy/git-auto-commit/config"
+	"github.com/ivy/git-auto-commit/template"
 	"github.com/ivy/git-auto-commit/util/exec"
 	"github.com/ivy/git-auto-commit/util/git"
 	"github.com/ivy/git-auto-commit/util/log"
@@ -47,32 +48,6 @@ type Config struct {
 }
 
 var editorFallbacks = []string{"nano", "vim", "vi"}
-
-// defaultCommitMessageFormat is the default format for commit messages.
-// Source: https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html
-var defaultCommitMessageFormat = `
-Capitalized, short (50 chars or less) summary
-
-More detailed explanatory text, if necessary.  Wrap it to about 72
-characters or so.  In some contexts, the first line is treated as the
-subject of an email and the rest of the text as the body.  The blank
-line separating the summary from the body is critical (unless you omit
-the body entirely); tools like rebase can get confused if you run the
-two together.
-
-Write your commit message in the imperative: "Fix bug" and not "Fixed bug"
-or "Fixes bug."  This convention matches up with commit messages generated
-by commands like git merge and git revert.
-
-Further paragraphs come after blank lines.
-
-- Bullet points are okay, too
-
-- Typically a hyphen or asterisk is used for the bullet, followed by a
-  single space, with blank lines in between, but conventions vary here
-
-- Use a hanging indent
-`
 
 // commitMessagePrompt is a template for the commit message prompt.
 var commitMessagePrompt = txtTemplate.Must(txtTemplate.New("commitMessage").Parse(
@@ -135,10 +110,17 @@ func GenerateCommitMessage(ctx context.Context, config *Config, staged string) (
 		option.WithAPIKey(config.OpenAIAPIKey),
 	)
 
+	format, err := template.RenderString("format/commit.tmpl", nil)
+	if err != nil {
+		log.Errorw("failed to render commit message format",
+			"error", err)
+		return "", err
+	}
+
 	prompt := &bytes.Buffer{}
-	err := commitMessagePrompt.Execute(prompt, map[string]any{
+	err = commitMessagePrompt.Execute(prompt, map[string]any{
 		"Staged":  staged,
-		"Format":  defaultCommitMessageFormat,
+		"Format":  format,
 		"Message": config.Message,
 	})
 	if err != nil {
