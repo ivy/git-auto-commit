@@ -13,7 +13,21 @@ fi
 echo "Installing Go dependencies..."
 go mod download
 
-if ! command -v ginkgo &> /dev/null; then
-  echo "Installing Ginkgo CLI..."
-  go install github.com/onsi/ginkgo/v2/ginkgo
+if [[ -n "${CI:-}" ]]; then
+  declare -A packages=(
+    [ginkgo]="github.com/onsi/ginkgo/v2/ginkgo@latest"
+  )
+else
+  declare -A packages=(
+    [ginkgo]="github.com/onsi/ginkgo/v2/ginkgo@latest"
+    [gorename]="golang.org/x/tools/cmd/gorename@latest"
+    [gopls]="golang.org/x/tools/gopls@latest"
+  )
 fi
+
+for cmd in "${!packages[@]}"; do
+  if ! command -v "$cmd" &> /dev/null; then
+    echo "Installing ${cmd}..."
+    go install "${packages[$cmd]}"
+  fi
+done
