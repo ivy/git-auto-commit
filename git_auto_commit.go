@@ -11,7 +11,6 @@ import (
 	stdexec "os/exec"
 	"path/filepath"
 	"strings"
-	txtTemplate "text/template"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
@@ -48,17 +47,6 @@ type Config struct {
 }
 
 var editorFallbacks = []string{"nano", "vim", "vi"}
-
-// commitFooter is added to the end of verbose commits before opening them in
-// the editor.
-var commitFooter = txtTemplate.Must(txtTemplate.New("commitFooter").Parse(
-	`Please edit the commit message to your liking. Lines starting
-with '{{.CommentChar}}' will be ignored, and an empty message aborts the commit.
-
-{{.GitStatus}}
------------------------- >8 ------------------------
-Do not modify or remove the line above.
-Everything below it will be ignored.`))
 
 // prefixLines prefixes each line of the input reader with the given prefix
 // string and writes the result to the output writer.  It returns an error if
@@ -211,9 +199,8 @@ func AutoCommit(ctx context.Context, config *Config) error {
 			return err
 		}
 
-		footer := new(bytes.Buffer)
-		err = commitFooter.Execute(footer, map[string]string{
-			// TODO(ivy): use core.commentChar
+		footer, err := template.RenderString("format/commit_footer.tmpl", map[string]any{
+			// TODO(ivy): use `git core.commentChar`
 			"CommentChar": commentChar,
 			"Scissors":    scissors,
 			"GitStatus":   gitStatus,
@@ -226,7 +213,7 @@ func AutoCommit(ctx context.Context, config *Config) error {
 			return err
 		}
 
-		r := bytes.NewBufferString(footer.String())
+		r := bytes.NewBufferString(footer)
 		w := new(bytes.Buffer)
 		if err = prefixLines(r, w, commentChar+" "); err != nil {
 			return err
