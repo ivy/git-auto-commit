@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"io"
 	"os/exec"
 )
 
@@ -21,4 +22,20 @@ func NewRealCmd(name string, arg ...string) Cmd {
 // Output wraps (*exec.Cmd).Output()
 func (r *RealCmd) Output() ([]byte, error) {
 	return r.cmd.Output()
+}
+
+func (r *RealCmd) SetStdin(stdin io.Reader) {
+	r.cmd.Stdin = stdin
+}
+
+func (r *RealCmd) SetStdout(stdout io.Writer) {
+	r.cmd.Stdout = stdout
+}
+
+func (r *RealCmd) SetStderr(stderr io.Writer) {
+	r.cmd.Stderr = stderr
+}
+
+func (r *RealCmd) Run() error {
+	return r.cmd.Run()
 }

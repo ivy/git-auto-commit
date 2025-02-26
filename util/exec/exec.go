@@ -1,6 +1,9 @@
 package exec
 
-import "sync"
+import (
+	"io"
+	"sync"
+)
 
 var (
 	mu sync.RWMutex
@@ -14,7 +17,11 @@ var (
 // Command is an interface encapsulating the methods of *exec.Cmd that are commonly used.
 // You can add more methods here if you need more functionality (e.g., SetStdout, SetStderr, etc.).
 type Cmd interface {
+	SetStdin(io.Reader)
+	SetStdout(io.Writer)
+	SetStderr(io.Writer)
 	Output() ([]byte, error)
+	Run() error
 }
 
 func Command(name string, arg ...string) Cmd {
