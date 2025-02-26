@@ -195,8 +195,7 @@ func AutoCommit(ctx context.Context, config *Config) error {
 
 	// 1. Get the staged changes.
 	// TODO(ivy): handle amending commits
-	cmd := exec.Command("git", "diff", "--cached")
-	staged, err := cmd.Output()
+	staged, err := git.Diff(true)
 	if err != nil {
 		log.Errorw("failed to get staged changes",
 			"error", err)
@@ -278,7 +277,7 @@ func AutoCommit(ctx context.Context, config *Config) error {
 			return err
 		}
 
-		if _, err = f.Write(staged); err != nil {
+		if _, err = f.WriteString(staged); err != nil {
 			return err
 		}
 
@@ -307,7 +306,7 @@ func AutoCommit(ctx context.Context, config *Config) error {
 		"extra_args", config.ExtraArgs)
 
 	// 3. Otherwise, commit the changes and pass any extra args.
-	cmd = exec.Command(
+	cmd := exec.Command(
 		"git",
 		append([]string{"commit", "--file", "-"}, config.ExtraArgs...)...,
 	)
