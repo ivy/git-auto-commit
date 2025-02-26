@@ -13,6 +13,18 @@ var (
 	atomicLevel zap.AtomicLevel
 )
 
+type Level zapcore.Level
+
+const (
+	DebugLevel  Level = Level(zapcore.DebugLevel)
+	InfoLevel   Level = Level(zapcore.InfoLevel)
+	WarnLevel   Level = Level(zapcore.WarnLevel)
+	ErrorLevel  Level = Level(zapcore.ErrorLevel)
+	DPanicLevel Level = Level(zapcore.DPanicLevel)
+	PanicLevel  Level = Level(zapcore.PanicLevel)
+	FatalLevel  Level = Level(zapcore.FatalLevel)
+)
+
 func init() {
 	atomicLevel = zap.NewAtomicLevelAt(zap.InfoLevel)
 	cfg := zap.NewDevelopmentConfig()
@@ -33,8 +45,8 @@ func SetLogger(l *zap.SugaredLogger) {
 }
 
 // SetLevel allows changing the log level dynamically.
-func SetLevel(level zapcore.Level) {
-	atomicLevel.SetLevel(level)
+func SetLevel(level Level) {
+	atomicLevel.SetLevel(zapcore.Level(level))
 }
 
 // getLogger safely returns the current logger.
