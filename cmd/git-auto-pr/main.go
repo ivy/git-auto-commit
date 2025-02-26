@@ -130,7 +130,7 @@ Options:
 	log.Infow("commitConfig", "commitConfig", prConfig)
 
 	// Run the auto-commit logic
-	if err := git_auto_commit.AutoCommit(context.Background(), prConfig); err != nil {
+	if err := git_auto_commit.AutoPullRequest(context.Background(), prConfig); err != nil {
 		log.Fatalw("failed to auto-commit", "error", err)
 	}
 }
