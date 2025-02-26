@@ -56,7 +56,7 @@ var _ = Describe("Engine", func() {
 				bytesOutput, renderErr := engine.RenderBytes(
 					"prompt/commit.tmpl",
 					map[string]string{
-						"UserMessage": "Ginkgo",
+						"Message": "Ginkgo",
 					},
 				)
 				Expect(renderErr).NotTo(HaveOccurred())
@@ -81,7 +81,7 @@ var _ = Describe("Engine", func() {
 				strOutput, renderErr := engine.RenderString(
 					"prompt/commit.tmpl",
 					map[string]string{
-						"UserMessage": "Gomega",
+						"Message": "Gomega",
 					},
 				)
 				Expect(renderErr).NotTo(HaveOccurred())
@@ -103,7 +103,7 @@ var _ = Describe("Engine", func() {
 		When("the template exists", func() {
 			It("should render the template and return an io.Reader", func() {
 				reader, renderErr := engine.Render("prompt/commit.tmpl", map[string]string{
-					"UserMessage": "ReaderTest",
+					"Message": "ReaderTest",
 				})
 				Expect(renderErr).NotTo(HaveOccurred())
 				Expect(reader).NotTo(BeNil())
