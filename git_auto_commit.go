@@ -18,6 +18,7 @@ import (
 
 	"github.com/ivy/git-auto-commit/config"
 	"github.com/ivy/git-auto-commit/util/exec"
+	"github.com/ivy/git-auto-commit/util/git"
 	"github.com/ivy/git-auto-commit/util/log"
 )
 
@@ -121,12 +122,6 @@ func prefixLines(r io.Reader, w io.Writer, prefix string) error {
 		}
 	}
 	return scanner.Err()
-}
-
-func getGitStatus() (string, error) {
-	cmd := exec.Command("git", "status")
-	out, err := cmd.Output()
-	return string(out), err
 }
 
 // GenerateCommitMessage generates a commit message for the given staged changes
@@ -254,7 +249,7 @@ func AutoCommit(ctx context.Context, config *Config) error {
 		defer f.Close()
 		defer os.Remove(f.Name())
 
-		gitStatus, err := getGitStatus()
+		gitStatus, err := git.Status()
 		if err != nil {
 			return err
 		}
