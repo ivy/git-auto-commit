@@ -11,7 +11,7 @@ import (
 	stdexec "os/exec"
 	"path/filepath"
 	"strings"
-	"text/template"
+	txtTemplate "text/template"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
@@ -75,7 +75,7 @@ Further paragraphs come after blank lines.
 `
 
 // commitMessagePrompt is a template for the commit message prompt.
-var commitMessagePrompt = template.Must(template.New("commitMessage").Parse(
+var commitMessagePrompt = txtTemplate.Must(txtTemplate.New("commitMessage").Parse(
 	`You are a helpful assistant who generates commit messages for Git.
 
 Commit messages follow this format:
@@ -99,7 +99,7 @@ Generate a commit message for the changes, following the format above.`,
 
 // commitFooter is added to the end of verbose commits before opening them in
 // the editor.
-var commitFooter = template.Must(template.New("commitFooter").Parse(
+var commitFooter = txtTemplate.Must(txtTemplate.New("commitFooter").Parse(
 	`Please edit the commit message to your liking. Lines starting
 with '{{.CommentChar}}' will be ignored, and an empty message aborts the commit.
 
