@@ -6,5 +6,11 @@ set -o nounset
 
 PROJECT_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+GIT_AUTO_COMMIT_LOG_LEVEL="${GIT_AUTO_COMMIT_LOG_LEVEL:-debug}"
+
+source "$PROJECT_ROOT/.env"
+export OPENAI_API_KEY
+export GIT_AUTO_COMMIT_DEBUG
+
 cd "$PROJECT_ROOT"
 exec go run ./cmd/git-auto-commit/main.go "$@"
