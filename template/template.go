@@ -23,6 +23,9 @@ type Engine struct {
 	templates map[string]*template.Template
 }
 
+// engine is the default template engine instance.
+var engine = New()
+
 // New creates a new template engine. It parses all templates in the templates
 // directory and returns an Engine instance. If parsing fails, it returns
 // an error.
@@ -30,6 +33,28 @@ func New() *Engine {
 	return &Engine{
 		templates: make(map[string]*template.Template),
 	}
+}
+
+// Lookup returns a template by name. If the template is not found, it
+// parses the template from the embedded file system and caches it for
+// future use.
+func Lookup(name string) (*template.Template, error) {
+	return engine.Lookup(name)
+}
+
+// RenderBytes returns a byte slice for the rendered template.
+func RenderBytes(name string, data any) ([]byte, error) {
+	return engine.RenderBytes(name, data)
+}
+
+// RenderString returns a string for the rendered template.
+func RenderString(name string, data any) (string, error) {
+	return engine.RenderString(name, data)
+}
+
+// Render returns an io.Reader for the rendered template.
+func Render(name string, data any) (io.Reader, error) {
+	return engine.Render(name, data)
 }
 
 // lookup parses a template from the embedded file system. It caches the parsed
