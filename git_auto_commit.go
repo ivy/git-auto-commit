@@ -11,13 +11,14 @@ import (
 	stdexec "os/exec"
 	"path/filepath"
 	"strings"
-	"text/template"
 
 	"github.com/openai/openai-go"
 	"github.com/openai/openai-go/option"
 
 	"github.com/ivy/git-auto-commit/config"
+	"github.com/ivy/git-auto-commit/template"
 	"github.com/ivy/git-auto-commit/util/exec"
+	"github.com/ivy/git-auto-commit/util/git"
 	"github.com/ivy/git-auto-commit/util/log"
 )
 
@@ -47,66 +48,6 @@ type Config struct {
 
 var editorFallbacks = []string{"nano", "vim", "vi"}
 
-// defaultCommitMessageFormat is the default format for commit messages.
-// Source: https://tbaggery.com/2008/04/19/a-note-about-git-commit-messages.html
-var defaultCommitMessageFormat = `
-Capitalized, short (50 chars or less) summary
-
-More detailed explanatory text, if necessary.  Wrap it to about 72
-characters or so.  In some contexts, the first line is treated as the
-subject of an email and the rest of the text as the body.  The blank
-line separating the summary from the body is critical (unless you omit
-the body entirely); tools like rebase can get confused if you run the
-two together.
-
-Write your commit message in the imperative: "Fix bug" and not "Fixed bug"
-or "Fixes bug."  This convention matches up with commit messages generated
-by commands like git merge and git revert.
-
-Further paragraphs come after blank lines.
-
-- Bullet points are okay, too
-
-- Typically a hyphen or asterisk is used for the bullet, followed by a
-  single space, with blank lines in between, but conventions vary here
-
-- Use a hanging indent
-`
-
-// commitMessagePrompt is a template for the commit message prompt.
-var commitMessagePrompt = template.Must(template.New("commitMessage").Parse(
-	`You are a helpful assistant who generates commit messages for Git.
-
-Commit messages follow this format:
-
-{{.Format}}
-
----
-
-The following changes have been staged for commit:
-
-{{.Staged}}
-
----
-
-Additional context for the commit message: {{.Message}}
-
----
-
-Generate a commit message for the changes, following the format above.`,
-))
-
-// commitFooter is added to the end of verbose commits before opening them in
-// the editor.
-var commitFooter = template.Must(template.New("commitFooter").Parse(
-	`Please edit the commit message to your liking. Lines starting
-with '{{.CommentChar}}' will be ignored, and an empty message aborts the commit.
-
-{{.GitStatus}}
------------------------- >8 ------------------------
-Do not modify or remove the line above.
-Everything below it will be ignored.`))
-
 // prefixLines prefixes each line of the input reader with the given prefix
 // string and writes the result to the output writer.  It returns an error if
 // one occurs during reading or writing.
@@ -123,12 +64,6 @@ func prefixLines(r io.Reader, w io.Writer, prefix string) error {
 	return scanner.Err()
 }
 
-func getGitStatus() (string, error) {
-	cmd := exec.Command("git", "status")
-	out, err := cmd.Output()
-	return string(out), err
-}
-
 // GenerateCommitMessage generates a commit message for the given staged changes
 // and Config using AI.
 func GenerateCommitMessage(ctx context.Context, config *Config, staged string) (string, error) {
@@ -140,10 +75,16 @@ func GenerateCommitMessage(ctx context.Context, config *Config, staged string) (
 		option.WithAPIKey(config.OpenAIAPIKey),
 	)
 
-	prompt := &bytes.Buffer{}
-	err := commitMessagePrompt.Execute(prompt, map[string]any{
+	format, err := template.RenderString("format/commit.tmpl", nil)
+	if err != nil {
+		log.Errorw("failed to render commit message format",
+			"error", err)
+		return "", err
+	}
+
+	prompt, err := template.RenderString("prompt/commit.tmpl", map[string]any{
 		"Staged":  staged,
-		"Format":  defaultCommitMessageFormat,
+		"Format":  format,
 		"Message": config.Message,
 	})
 	if err != nil {
@@ -151,13 +92,13 @@ func GenerateCommitMessage(ctx context.Context, config *Config, staged string) (
 			"error", err)
 		return "", err
 	}
-	log.Debugw("commit message template executed", "prompt", prompt.String())
+	log.Debugw("commit message template executed", "prompt", prompt)
 
 	stream := client.Chat.Completions.NewStreaming(
 		ctx,
 		openai.ChatCompletionNewParams{
 			Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
-				openai.UserMessage(prompt.String()),
+				openai.UserMessage(prompt),
 			}),
 			Seed:  openai.Int(0),
 			Model: openai.F(openai.ChatModel(config.Model)),
@@ -200,8 +141,7 @@ func AutoCommit(ctx context.Context, config *Config) error {
 
 	// 1. Get the staged changes.
 	// TODO(ivy): handle amending commits
-	cmd := exec.Command("git", "diff", "--cached")
-	staged, err := cmd.Output()
+	staged, err := git.Diff(true)
 	if err != nil {
 		log.Errorw("failed to get staged changes",
 			"error", err)
@@ -254,14 +194,13 @@ func AutoCommit(ctx context.Context, config *Config) error {
 		defer f.Close()
 		defer os.Remove(f.Name())
 
-		gitStatus, err := getGitStatus()
+		gitStatus, err := git.Status()
 		if err != nil {
 			return err
 		}
 
-		footer := new(bytes.Buffer)
-		err = commitFooter.Execute(footer, map[string]string{
-			// TODO(ivy): use core.commentChar
+		footer, err := template.RenderString("format/commit_footer.tmpl", map[string]any{
+			// TODO(ivy): use `git core.commentChar`
 			"CommentChar": commentChar,
 			"Scissors":    scissors,
 			"GitStatus":   gitStatus,
@@ -274,7 +213,7 @@ func AutoCommit(ctx context.Context, config *Config) error {
 			return err
 		}
 
-		r := bytes.NewBufferString(footer.String())
+		r := bytes.NewBufferString(footer)
 		w := new(bytes.Buffer)
 		if err = prefixLines(r, w, commentChar+" "); err != nil {
 			return err
@@ -283,7 +222,7 @@ func AutoCommit(ctx context.Context, config *Config) error {
 			return err
 		}
 
-		if _, err = f.Write(staged); err != nil {
+		if _, err = f.WriteString(staged); err != nil {
 			return err
 		}
 
@@ -312,7 +251,7 @@ func AutoCommit(ctx context.Context, config *Config) error {
 		"extra_args", config.ExtraArgs)
 
 	// 3. Otherwise, commit the changes and pass any extra args.
-	cmd = exec.Command(
+	cmd := exec.Command(
 		"git",
 		append([]string{"commit", "--file", "-"}, config.ExtraArgs...)...,
 	)

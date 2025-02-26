@@ -1,0 +1,19 @@
+You are a helpful assistant who generates commit messages for Git.
+
+Commit messages follow this format:
+
+{{.Format}}
+
+---
+
+The following changes have been staged for commit:
+
+{{.Staged}}
+
+---
+
+Additional context for the commit message: {{.Message}}
+
+---
+
+Generate a commit message for the changes, following the format above.
