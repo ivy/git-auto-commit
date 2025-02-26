@@ -49,29 +49,6 @@ type Config struct {
 
 var editorFallbacks = []string{"nano", "vim", "vi"}
 
-// commitMessagePrompt is a template for the commit message prompt.
-var commitMessagePrompt = txtTemplate.Must(txtTemplate.New("commitMessage").Parse(
-	`You are a helpful assistant who generates commit messages for Git.
-
-Commit messages follow this format:
-
-{{.Format}}
-
----
-
-The following changes have been staged for commit:
-
-{{.Staged}}
-
----
-
-Additional context for the commit message: {{.Message}}
-
----
-
-Generate a commit message for the changes, following the format above.`,
-))
-
 // commitFooter is added to the end of verbose commits before opening them in
 // the editor.
 var commitFooter = txtTemplate.Must(txtTemplate.New("commitFooter").Parse(
@@ -117,8 +94,7 @@ func GenerateCommitMessage(ctx context.Context, config *Config, staged string) (
 		return "", err
 	}
 
-	prompt := &bytes.Buffer{}
-	err = commitMessagePrompt.Execute(prompt, map[string]any{
+	prompt, err := template.RenderString("prompt/commit.tmpl", map[string]any{
 		"Staged":  staged,
 		"Format":  format,
 		"Message": config.Message,
@@ -128,13 +104,13 @@ func GenerateCommitMessage(ctx context.Context, config *Config, staged string) (
 			"error", err)
 		return "", err
 	}
-	log.Debugw("commit message template executed", "prompt", prompt.String())
+	log.Debugw("commit message template executed", "prompt", prompt)
 
 	stream := client.Chat.Completions.NewStreaming(
 		ctx,
 		openai.ChatCompletionNewParams{
 			Messages: openai.F([]openai.ChatCompletionMessageParamUnion{
-				openai.UserMessage(prompt.String()),
+				openai.UserMessage(prompt),
 			}),
 			Seed:  openai.Int(0),
 			Model: openai.F(openai.ChatModel(config.Model)),
